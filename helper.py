@@ -4,6 +4,7 @@ import google.generativeai as genai
 from PIL import Image
 import requests
 from io import BytesIO
+import logging
 
 # Load environment variables from .env file
 load_dotenv()
@@ -26,27 +27,46 @@ model = genai.GenerativeModel(
   generation_config=generation_config,
 )
 
+# Configure logging
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+
 def generate_image_from_text(prompt, img):
-    response = requests.post(
-        f"https://api.stability.ai/v2beta/stable-image/generate/ultra",
-        headers={
-            "authorization": f"Bearer {STABILITY_API_KEY}",
-            "accept": "image/*"
-        },
-        files={"none": ''},
-        data={
-            "prompt": prompt,
-            "mode": "imagetoimage",
-            "image": img,
-            "output_format": "png"
-        },
-    )
-    
-    if response.status_code == 200:
-        image = Image.open(BytesIO(response.content))
-        return image
-    else:
-        raise Exception(str(response.json()))
+    try:
+        response = requests.post(
+            f"https://api.stability.ai/v2beta/stable-image/generate/ultra",
+            headers={
+                "authorization": f"Bearer {STABILITY_API_KEY}",
+                "accept": "image/*"
+            },
+            files={"none": ''},
+            data={
+                "prompt": prompt,
+                "mode": "imagetoimage",
+                "image": img,
+                "output_format": "png"
+            },
+        )
+        
+        # Log the request details
+        logging.info(f"Request sent to API with prompt: {prompt}")
+
+        if response.status_code == 200:
+            image = Image.open(BytesIO(response.content))
+            logging.info("Image generated successfully.")
+            return image
+        elif response.status_code == 401:
+            logging.error("Unauthorized: Check your API key.")
+            raise Exception("Unauthorized: Check your API key.")
+        elif response.status_code == 400:
+            logging.error("Bad Request: Check the request parameters.")
+            raise Exception("Bad Request: Check the request parameters.")
+        else:
+            error_message = response.json().get('message', 'Unknown error')
+            logging.error(f"Error {response.status_code}: {error_message}")
+            raise Exception(f"Error {response.status_code}: {error_message}")
+    except requests.exceptions.RequestException as e:
+        logging.error(f"Request failed: {str(e)}")
+        raise Exception("Failed to connect to the API. Please check your network connection.")
 
 def get_image_description(image, additional_info, selected_style):
     # Ensure the image is in RGB format
