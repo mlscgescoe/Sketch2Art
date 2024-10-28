@@ -27,8 +27,16 @@ model = genai.GenerativeModel(
   generation_config=generation_config,
 )
 
-# Configure logging
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+# Create a logs directory if it doesn't exist
+if not os.path.exists('logs'):
+    os.makedirs('logs')
+
+# Configure logging to write to a file
+logging.basicConfig(
+    filename='logs/image_generation.log',  # Log file path
+    level=logging.INFO,
+    format='%(asctime)s - %(levelname)s - %(message)s'
+)
 
 def generate_image_from_text(prompt, img):
     try:
